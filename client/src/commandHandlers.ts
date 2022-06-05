@@ -24,11 +24,8 @@ import {
 	LogicManager
 } from '@accordproject/ergo-compiler';
 
-const Template = require('@accordproject/cicero-core').Template;
 const CodeGen = require('@accordproject/concerto-tools').CodeGen;
 const FileWriter = require('@accordproject/concerto-tools').FileWriter;
-const Clause = require('@accordproject/cicero-core').Clause;
-const Engine = require('@accordproject/cicero-engine').Engine;
 const ModelFile = require('@accordproject/concerto-core').ModelFile;
 
 var md = require('markdown-it')()
@@ -44,8 +41,16 @@ export function setOutputChannel(oc: vscode.OutputChannel) {
 
 async function getModelManager(ctoFile: vscode.Uri) {
 	try {
+
+		console.log(ctoFile.fsPath)
+
 		const modelRoot = path.dirname(ctoFile.fsPath)
+
+		console.log(modelRoot);
+		
 		const modelFileName = ctoFile.fsPath;
+
+		console.log(modelFileName)
 
 		const logicManager = new LogicManager('es6');
 		const modelManager = logicManager.getModelManager();
@@ -54,6 +59,7 @@ async function getModelManager(ctoFile: vscode.Uri) {
 
 		// load the edited file
 		const contents = getDocument(modelFileName);
+		console.log(contents)
 		const rootModelFile = new ModelFile(modelManager, contents, modelFileName);
 		outputChannel.appendLine(`Loaded model file: ${rootModelFile.getNamespace()}`);
 		loadedModelFiles.push(rootModelFile);
@@ -102,27 +108,6 @@ async function getModelManager(ctoFile: vscode.Uri) {
 	return null;
 }
 
-export async function exportArchive(file: vscode.Uri) {
-	try {
-		if(!checkTemplate(file)) {
-			return false;
-		}
-
-		await vscode.workspace.saveAll();
-		const template = await Template.fromDirectory(file.path);
-		const archive = await template.toArchive('ergo');
-
-		const outputPath = path.join(file.path, `${template.getIdentifier()}.cta`);
-		fs.writeFileSync(outputPath, archive);
-		vscode.window.showInformationMessage(`Created archive ${outputPath}`);
-		return true;
-	} catch (error) {
-		vscode.window.showErrorMessage( `Failed to export archive ${error}`);
-	}
-
-	return false;
-}
-
 export async function downloadModels(file: vscode.Uri) {
 	try {
 		const outputPath = path.dirname(file.path);
@@ -149,7 +134,7 @@ function getDocument(file) {
 		}
 	}
 
-	if(fs.existsSync(file)) {
+	if(vscode.workspace.fs.readFile(file)) {
 		return fs.readFileSync(file, 'utf-8');
 	}
 	else {
@@ -230,82 +215,6 @@ function checkTemplate(file: vscode.Uri) {
 	return true;
 }
 
-export async function triggerClause(file: vscode.Uri) {
-	try {
-		if(!checkTemplate(file)) {
-			return false;
-		}
-
-		outputChannel.show();
-		
-		await vscode.workspace.saveAll();
-		const template = await Template.fromDirectory(file.path);
-		const clause = new Clause(template);
-		const samplePath = path.join(file.path, 'text', 'sample.md');
-
-		if (!fs.existsSync(samplePath)) {
-			vscode.window.showErrorMessage('Cannot trigger: /text/sample.md file was not found.');
-			return false;
-		}
-
-		const requestPath = path.join(file.path, 'request.json');
-
-		if (!fs.existsSync(requestPath)) {
-			vscode.window.showErrorMessage('Cannot trigger:/request.json file was not found.');
-			return false;
-		}
-
-		const sampleText = fs.readFileSync(samplePath, 'utf8');
-		clause.parse(sampleText);
-		const parseResult = clause.getData();
-
-		outputChannel.appendLine('template');
-		outputChannel.appendLine('========');
-		outputChannel.appendLine(template.getIdentifier());
-		outputChannel.appendLine('');
-
-		outputChannel.appendLine('sample.md parse result');
-		outputChannel.appendLine('======================');
-		outputChannel.appendLine(JSON.stringify(parseResult, null, 2));
-		outputChannel.appendLine('');
-
-		const request = JSON.parse(fs.readFileSync(requestPath, 'utf8'));
-
-		outputChannel.appendLine('request.json');
-		outputChannel.appendLine('============');
-		outputChannel.appendLine(JSON.stringify(request, null, 2));
-		outputChannel.appendLine('');
-
-		const statePath = path.join(file.path, 'state.json');
-		const engine = new Engine();
-		let state = null;
-
-		if (!fs.existsSync(statePath)) {
-			const initResult = await engine.init(clause, null);
-			state = initResult.state;
-		} else {
-			state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-		}
-
-		outputChannel.appendLine('state.json');
-		outputChannel.appendLine('==========');
-		outputChannel.appendLine(JSON.stringify(state, null, 2));
-		outputChannel.appendLine('');
-
-		const result = await engine.trigger(clause, request, state, null);
-
-		outputChannel.appendLine('response');
-		outputChannel.appendLine('========');
-		outputChannel.appendLine(JSON.stringify(result, null, 2));
-		outputChannel.appendLine('');
-
-		return true;
-	} catch (error) {
-		vscode.window.showErrorMessage( `Failed to trigger clause ${error}`);
-	}
-
-	return false;
-}
 
 async function getHtml() {
 

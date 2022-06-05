@@ -10,6 +10,7 @@
 		"type": "git",
 		"url": "https://github.com/accordproject/cicero-vscode-extension"
 	},
+	"browser": "./client/dist/browserClientMain",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -25,6 +26,7 @@
 		"@accordproject/markdown-it-cicero": "^0.13.0",
 		"@accordproject/markdown-it-template": "^0.13.0",
 		"mermaid": "^8.13.8",
-		"vscode-languageclient": "^6.1.3"
+		"os-browserify": "^0.3.0",
+		"vscode-languageclient": "^7.0.0"
 	}
 }
