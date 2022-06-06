@@ -5,6 +5,7 @@
 	// List of extensions which should be recommended for users of this workspace.
 	"recommendations": [
 		"dbaeumer.vscode-eslint",
+		"amodio.tsl-problem-matcher",
 		"camel-tooling.yo"
 	]
 }

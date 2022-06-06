@@ -3,11 +3,11 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"noImplicitAny": false,
+		"lib": ["es6", "WebWorker"],
 		"noImplicitReturns": true,
 		"module": "commonjs",
 		"moduleResolution": "node",
 		"target": "es6",
-		"lib": ["es6"],
 		"sourceMap": true,
 		"outDir": "../../client/server"
 	},

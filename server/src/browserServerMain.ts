@@ -15,12 +15,11 @@
 'use strict';
 
 import {
-	createConnection, TextDocuments, TextDocumentSyncKind,
+	createConnection, TextDocuments, TextDocumentSyncKind,BrowserMessageReader,BrowserMessageWriter,
     Diagnostic, DiagnosticSeverity,
     CodeActionKind,
     CodeActionParams,
-    CodeAction,
-	BrowserMessageReader, BrowserMessageWriter
+    CodeAction
 } from 'vscode-languageserver/browser';
 
 import {
@@ -32,20 +31,19 @@ import * as fs from 'fs';
 import * as path from 'path';
 import fileUriToPath from './fileUriToPath';
 
-import { TemplateInstance } from '@accordproject/cicero-core';
 import { LogicManager } from '@accordproject/ergo-compiler';
 import { ModelFile } from '@accordproject/concerto-core';
-import { ParserManager, TemplateMarkTransformer } from '@accordproject/markdown-template';
+import { TemplateMarkTransformer } from '@accordproject/markdown-template';
 import { CiceroMarkTransformer } from '@accordproject/markdown-cicero';
-import { EvalEngine } from '@accordproject/ergo-engine/index.browser.js';
 import { quickfix } from './CodeActionProvider';
 
-import util = require('util');
+const util = require('util');
 
-const messageReader = new BrowserMessageReader(this);
-const messageWriter = new BrowserMessageWriter(this);
 
-const connection = createConnection(messageReader, messageWriter);
+const messageReader = new BrowserMessageReader(self);
+const messageWriter = new BrowserMessageWriter(self);
+
+const connection = createConnection(messageReader,messageWriter);
 
 // Create a manager for open text documents
 let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
@@ -263,6 +261,7 @@ documents.onDidOpen((event) => {
 /**
  * Connect the document connection to the client
  */
+
 documents.listen(connection);
 
 /**
@@ -356,13 +355,12 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 
         // if the model is valid, then we proceed
         if(modelValid && isTemplate(projectRoot)) {
-            const grammarValid = await validateGrammar(textDocument, diagnosticMap, templateCache);
 
             if(basename === 'grammar.tem.md' || fileExtension === '.cto' || fileExtension === '.ergo') {
                 ergoValid = await compileErgoFiles(textDocument, diagnosticMap, templateCache);    
             }
 
-            if(grammarValid && ergoValid) {
+            if(ergoValid) {
                 // check the sample is valid
                 await parseSampleFile(textDocument, diagnosticMap, templateCache);
             }
@@ -507,82 +505,6 @@ async function validateModels(textDocument: TextDocument, diagnosticMap, templat
  * @param textDocument - a TextDocument. WARNING, this may not be the .tem file!
  * @return Promise<boolean> true if the grammar file is valid
  */
-async function validateGrammar(textDocument: TextDocument, diagnosticMap, templateCache): Promise<boolean> {
-
-    try {
-        const pathStr = path.resolve(fileUriToPath(textDocument.uri));
-        const parentDir = getProjectRoot(pathStr);
-
-        if(!isTemplate(parentDir)) {
-            return false;
-        }
-
-        const grammarPath = parentDir + '/text/grammar.tem.md';
-        let templateCacheEntry = templateCache[parentDir];
-
-        if(!templateCacheEntry) {
-            return false;
-        }
-
-        const logicManager = templateCacheEntry.logicManager;
-
-        try {
-            connection.console.log(`*** Validating grammar under: ${parentDir}`);
-            clearErrors(grammarPath, 'grammar', diagnosticMap);
-
-            const packageJsonContents = getEditedFileContents(parentDir + '/package.json');
-            const packageJson = JSON.parse(packageJsonContents);
-            const modelManager = templateCacheEntry.logicManager.getModelManager();
-            if(!packageJson.accordproject || !packageJson.accordproject.template) {
-                const error = {
-                    message: 'package.json must have an accordproject.template attribute',
-                    fileName: parentDir + '/package.json'
-                }
-                pushDiagnostic(DiagnosticSeverity.Error, textDocument, error, 'template', diagnosticMap);
-            }
-            else {
-                clearErrors(parentDir + '/package.json', 'template', diagnosticMap);
-            }
-            const parserManager = new ParserManager(modelManager,null,packageJson.accordproject.template);
-            connection.console.log(`Created parser manager`);
-
-            const grammar = getEditedFileContents(grammarPath);
-            parserManager.setTemplate(grammar);
-            parserManager.buildParser();
-            connection.console.log(`Built parser`);
-
-            const formulas = parserManager.getFormulas();
-            formulas.forEach( (x) => {
-                logicManager.addTemplateFile(x.code, grammarPath);
-            });
-
-            const ergoEngine = new EvalEngine();
-
-            parserManager.setFormulaEval((name) => TemplateInstance.ciceroFormulaEval(
-                logicManager,
-                packageJson.name,
-                ergoEngine,
-                name
-            ));
-
-            connection.console.log(`Setup formula evaluation`);
-
-            templateCache[parentDir].parserManager = parserManager;
-            return true;
-        }
-        catch(error) {
-            templateCache[parentDir].parserManager = null;
-            error.fileName = grammarPath;
-            pushDiagnostic(DiagnosticSeverity.Error, textDocument, error, 'grammar', diagnosticMap);
-        }
-    }
-    catch(error) {
-        connection.console.error(error.message);
-        connection.console.error(error.stack);
-    }
-
-    return false;
-}
 
 /**
  * Parse sample.md

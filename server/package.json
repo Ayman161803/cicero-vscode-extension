@@ -6,6 +6,7 @@
 	"engines": {
 		"node": "*"
 	},
+	"browser": "./client/dist/browserServerMain",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/accordproject/cicero-vscode-extension"
@@ -18,7 +19,9 @@
 		"@accordproject/markdown-template": "^0.13.0",
 		"fast-safe-stringify": "2.0.6",
 		"glob": "^7.1.6",
-		"vscode-languageserver": "^6.1.1",
+		"os-browserify": "^0.3.0",
+		"vscode": "^1.1.37",
+		"vscode-languageserver": "^7.0.0",
 		"vscode-languageserver-textdocument": "^1.0.1",
 		"vscode-uri": "^1.0.6"
 	},

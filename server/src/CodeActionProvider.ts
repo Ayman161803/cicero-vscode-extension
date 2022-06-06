@@ -3,7 +3,7 @@ import {
     CodeActionParams,
     DiagnosticSeverity,
     CodeActionKind
-} from 'vscode-languageserver';
+} from 'vscode-languageserver/browser';
 
 
 /**

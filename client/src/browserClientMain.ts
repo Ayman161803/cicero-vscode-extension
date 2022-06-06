@@ -39,54 +39,15 @@ async function onDocumentChange(event) {
 	return null;
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 
 	// Set the process.browser variable so that the Concerto logger doesn't try to create log files
 	(process as any).browser = true;
 
 
-	/* 
-	 * all except the code to create the language client in not browser specific
-	 * and couuld be shared with a regular (Node) extension
-	 */
-	const documentSelector = [{
-		scheme: 'file',
-		language: 'ergo'
-	},
-	{
-		scheme: 'file',
-		language: 'concerto'
-	},
-	{
-		scheme: 'file',
-		language: 'ciceroMark'
-	},
-	{
-		scheme: 'file',
-		language: 'markdown',
-		pattern: '**/sample*.md'
-	}]
+	
 
-	// Options to control the language client
-	const clientOptions: LanguageClientOptions = {
-		documentSelector,
-		synchronize: {
-			// Synchronize the setting section 'Cicero' to the server
-			configurationSection: 'Cicero',
-			// Notify the server about file changes to '.clientrc files contain in the workspace
-			fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
-		},
-		initializationOptions: {}
-	};
-
-	const client = createWorkerLanguageClient(context, clientOptions);
-
-	const disposable = client.start();
-	context.subscriptions.push(disposable);
-
-	client.onReady().then(() => {
-		console.log('lsp-web-extension-sample server is ready');
-	});
+	
 
 
 
@@ -98,11 +59,12 @@ export function activate(context: vscode.ExtensionContext) {
 	setOutputChannel(outputChannel);
 
 	// Register commands
-
+	
 	context.subscriptions.push(vscode.commands
 		.registerCommand('cicero-vscode-extension.downloadModels', downloadModels));
 	context.subscriptions.push(vscode.commands
 		.registerCommand('cicero-vscode-extension.exportClassDiagram', exportClassDiagram));
+	
 
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
 
@@ -154,14 +116,63 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 
+	/* 
+	 * all except the code to create the language client in not browser specific
+	 * and couuld be shared with a regular (Node) extension
+	 */
+	const documentSelector = [{
+		scheme: 'file',
+		language: 'ergo'
+	},
+	{
+		scheme: 'file',
+		language: 'concerto'
+	},
+	{
+		scheme: 'file',
+		language: 'ciceroMark'
+	},
+	{
+		scheme: 'file',
+		language: 'markdown',
+		pattern: '**/sample*.md'
+	}]
+
+	// Options to control the language client
+	const clientOptions: LanguageClientOptions = {
+		documentSelector,
+		synchronize: {
+			// Synchronize the setting section 'Cicero' to the server
+			configurationSection: 'Cicero',
+			// Notify the server about file changes to '.clientrc files contain in the workspace
+			fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
+		},
+		initializationOptions: {}
+	};
+
+	const client = createWorkerLanguageClient(context, clientOptions);
+
+	const disposable = await client.start();
+	context.subscriptions.push(disposable);
+
+
+	client.onReady().then(() => {
+		console.log('Cicero server is ready');
+	});
+
+
 }
 
 function createWorkerLanguageClient(context: ExtensionContext, clientOptions: LanguageClientOptions) {
 	// Create a worker. The worker main file implements the language server.
-	const serverMain = Uri.joinPath(context.extensionUri, 'server/dist/browserServerMain.js');
+	const serverMain = Uri.joinPath(context.extensionUri, 'server/dist/server.js');
+	const worker = new Worker(serverMain.toString());
+
+	console.log(serverMain.toString())
+	console.log(worker)
 
 	// create the language server client to communicate with the server running in the worker
-	return new LanguageClient('lsp-web-extension-sample', 'LSP Web Extension Sample', clientOptions, null);
+	return new LanguageClient('cicero', 'Cicero Language Server', clientOptions, worker);
 }
 
 export function deactivate(): Thenable < void > | undefined {
